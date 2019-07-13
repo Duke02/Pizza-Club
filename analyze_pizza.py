@@ -29,21 +29,23 @@ def is_individual_ratings(data_file_name: str) -> bool:
 	return search("[Ii]ndividual", data_file_name) != None
 
 
+def get_range(data_frame: pd.DataFrame, axis: int) -> float:
+	return data_frame.max(axis=axis) - data_frame.min(axis=axis)
+
+
 def get_individual_analysis(data: pd.DataFrame) -> pd.DataFrame:
 	""" Gets everyone's individual analysis per name, per data field """
-	new_cols: typing.List[str] = ["person_mean", "person_range", "person_min", "person_max"]
-	new_rows: typing.List[str] = ["category_mean", "category_min", "category_max", "category_range"]
 
-	output: pd.DataFrame = data
-	output["person_mean"] = data.mean(axis=1)
-	output["person_range"] = data.max(axis=1) - data.min(axis=1)
-	output["person_min"] = data.min(axis=1)
-	output["person_max"] = data.max(axis=1)
+	new_cols: typing.Dict[str, typing.Callable] = {'person_mean': pd.DataFrame.mean, 'person_range': get_range, 'person_min': pd.DataFrame.min, 'person_max': pd.DataFrame.max}
+	new_rows: typing.Dict[str, typing.Callable] = {'category_mean': pd.DataFrame.mean, 'category_range': get_range, 'category_min': pd.DataFrame.min, 'category_max': pd.DataFrame.max}
 
-	output.loc["category_mean"] = data.mean(axis=0)
-	output.loc["category_min"] = data.min(axis=0)
-	output.loc["category_max"] = data.max(axis=0)
-	output.loc["category_range"] = data.max(axis=0) - data.min(axis=0)
+	output: pd.DataFrame = data.copy()
+
+	for col_name, col_func in new_cols.items():
+		output[col_name] = col_func(data, axis=1)
+
+	for row_name, row_func in new_rows.items():
+		output.loc[row_name] = row_func(data, axis=0)
 
 	output.loc[new_rows, new_cols] = np.nan
 
