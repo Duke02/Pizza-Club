@@ -19,8 +19,10 @@ def is_excel_file(data_file: str) -> bool:
 
 def parse_args() -> Namespace:
 	arg_parser = ArgumentParser(description='Analyze Pizza Club ratings.')
-	arg_parser.add_argument('-f', '--data-file', required=True, help='.csv file that contains pizza club ratings.', type=str)
+	arg_parser.add_argument('-f', '--data-file', required=True, help='.csv file or Excel spreadsheet that contains pizza club ratings.', type=str)
+	arg_parser.add_argument('-o', '--output-file', required=False, help='filepath to output analysis to', type=str, default='')
 	output_args: Namespace = arg_parser.parse_args()
+	output_args.should_output: bool = len(output_args.output_file) > 0
 	return output_args
 
 
@@ -58,21 +60,37 @@ def get_data_file(data_filename: str) -> typing.Dict[str, pd.DataFrame]:
 	return pd.read_excel(data_filename, sheet_name=None, index_col=0)
 
 
-def print_analysis(data: typing.Dict[str, pd.DataFrame]):
+def get_analysis(data: typing.Dict[str, pd.DataFrame]) -> typing.Dict[str, pd.DataFrame]:
+	output: typing.Dict[str, pd.DataFrame] = {}
 	for name, sheet in data.items():
 		if is_individual_ratings(name):
-			analytics: pd.DataFrame = get_individual_analysis(sheet)
-			print(f'Analytics for {name}:')
-			print(analytics)
-		else:
-			print(f'Cannot analyze {name} yet as it\'s pizza ratings')
+			analysis: pd.DataFrame = get_individual_analysis(sheet)
+			output[name] = analysis
+	return output
+
+
+def print_analysis(data: typing.Dict[str, pd.DataFrame]):
+	for name, sheet in data.items():
+		print(f'Analytics for {name}:')
+		print(sheet)
+
+
+def write_to_file(filename: str, data: typing.Dict[str, pd.DataFrame], is_analysis: bool = False):
+	with pd.ExcelWriter(filename) as excel_writer:
+		for name, sheet in data.items():
+			sheet_name = name + ' - Analysis' if is_analysis else name
+			sheet.to_excel(excel_writer, sheet_name=sheet_name)
 
 
 def main():
 	arguments: Namespace = parse_args()
 	data_filename: str = arguments.data_file
 	data: typing.Dict[str, pd.DataFrame] = get_data_file(data_filename)
-	print_analysis(data)
+	analysis: typing.Dict[str, pd.DataFrame] = get_analysis(data)
+	print_analysis(analysis)
+
+	if arguments.should_output:
+		write_to_file(arguments.output_file, analysis, is_analysis=True)
 
 
 if __name__ == "__main__":
