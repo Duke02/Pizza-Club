@@ -13,10 +13,15 @@ def load_csv(file_name: str) -> pd.DataFrame:
 	return output
 
 
+def is_excel_file(data_file: str) -> bool:
+	return 'xls' in data_file[-5:]
+
+
 def parse_args() -> Namespace:
 	arg_parser = ArgumentParser(description='Analyze Pizza Club ratings.')
 	arg_parser.add_argument('-f', '--data-file', required=True, help='.csv file that contains pizza club ratings.', type=str)
-	return arg_parser.parse_args()
+	output_args: Namespace = arg_parser.parse_args()
+	return output_args
 
 
 def is_individual_ratings(data_file_name: str) -> bool:
@@ -45,14 +50,27 @@ def get_individual_analysis(data: pd.DataFrame) -> pd.DataFrame:
 	return output
 
 
+def get_data_file(data_filename: str) -> typing.Dict[str, pd.DataFrame]:
+	if not is_excel_file(data_filename):
+		return {data_filename: load_csv(data_filename)}
+	return pd.read_excel(data_filename, sheet_name=None, index_col=0)
+
+
+def print_analysis(data: typing.Dict[str, pd.DataFrame]):
+	for name, sheet in data.items():
+		if is_individual_ratings(name):
+			analytics: pd.DataFrame = get_individual_analysis(sheet)
+			print(f'Analytics for {name}:')
+			print(analytics)
+		else:
+			print(f'Cannot analyze {name} yet as it\'s pizza ratings')
+
+
 def main():
 	arguments: Namespace = parse_args()
-	data: pd.DataFrame = load_csv(arguments.data_file)
-	if is_individual_ratings(arguments.data_file):
-		analytics = get_individual_analysis(data)
-		print(analytics)
-	else:
-		print("Is pizza ratings!")
+	data_filename: str = arguments.data_file
+	data: typing.Dict[str, pd.DataFrame] = get_data_file(data_filename)
+	print_analysis(data)
 
 
 if __name__ == "__main__":
